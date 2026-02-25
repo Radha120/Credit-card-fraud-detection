@@ -1,17 +1,8 @@
 import os
 import sys
 from dataclasses import dataclass
-from catboost import CatBoostRegressor
-from sklearn.ensemble import (
-    AdaBoostRegressor,
-    GradientBoostingRegressor,
-    RandomForestRegressor
-)
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.tree import DecisionTreeRegressor
-from xgboost import XGBRegressor
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score
 from src.exception import customException
 from src.logger import logging
 from src.utils import save_object,evaluate_model
@@ -30,63 +21,16 @@ class ModelTrainer:
                 test_array[:, :-1],
                 test_array[:, -1]
             )
-            models = {
-                "Linear Regression": LinearRegression(),
-                "K-Neighbors Regressor": KNeighborsRegressor(),
-                "Decision Tree": DecisionTreeRegressor(),
-                "Random Forest Regressor": RandomForestRegressor(),
-                "XGBRegressor": XGBRegressor(), 
-                "CatBoosting Regressor": CatBoostRegressor(verbose=False),
-                "AdaBoost Regressor": AdaBoostRegressor(),
-                "Gradient Boosting":GradientBoostingRegressor()
-            }
-            params={
-                "Decision Tree":{
-                    'criterion':['squared_error','friedman_mse','absolute_error','poisson']
-                },
-                "Random Forest Regressor":{
-                    'n_estimators':[8,16,32,64,128,256]
-                },
-                "Gradient Boosting":{
-                    'learning_rate':[.1,.01,.05,.001],
-                    'subsample':[0.6,0.7,0.75,0.8,0.85,0.9],
-                    'n_estimators':[8,16,32,64,128,256]
-                },
-                "Linear Regression":{},
-                "K-Neighbors Regressor":{
-                    'n_neighbors':[5,7,9,11]
-                },
-                "XGBRegressor":{
-                    'learning_rate':[.1,.01,.05,.001],
-                    'n_estimators':[8,16,32,64,128,256]
-                },
-                "CatBoosting Regressor":{
-                    'depth':[6,8,10],
-                    'learning_rate':[.1,.01,.05,.001],
-                    'iterations':[30,50,100]
-                },
-                "AdaBoost Regressor":{
-                    'learning_rate':[.1,.01,.05,.001],
-                    'n_estimators':[8,16,32,64,128,256]
-                }
-            } 
-            model_report:dict=evaluate_model(x_train=x_train,y_train=y_train,x_test=x_test,y_test=y_test,models=models,param=params)
-            best_model_score = max(model_report.values())
-            best_model_name=list(model_report.keys())[
-                list(model_report.values()).index(best_model_score)
-            ]
-            best_model=models[best_model_name]
-            if best_model_score <0.6:
-                raise customException("No Best model found")
-            logging.info(f"Best found model on both training and testing dataset")
-            best_model.fit(x_train, y_train)
+            model =XGBClassifier()
+            model_report:dict=evaluate_model(x_train=x_train,y_train=y_train,x_test=x_test,y_test=y_test,model=model)
+            model.fit(x_train, y_train)
             save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
-                obj=best_model
+                obj=model
             )
-            predicted=best_model.predict(x_test)
-            r2_square=r2_score(y_test,predicted)
-            return r2_square
+            predicted=model.predict(x_test)
+            Accuracy_score=accuracy_score(y_test,predicted)
+            return Accuracy_score
 
         except Exception as e:
             raise customException(e,sys)
